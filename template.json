@@ -1,0 +1,61 @@
+{
+  "variables": {
+    "version": "undefined",
+    "cpus": "1",
+    "memory": "512"
+  },
+  "builders": [{
+    "type": "virtualbox-iso",
+    "headless": true,
+    "guest_os_type": "Linux_64",
+    "guest_additions_mode": "disable",
+    "iso_url": "http://dl-cdn.alpinelinux.org/alpine/v3.6/releases/x86_64/alpine-virt-3.6.2-x86_64.iso",
+    "iso_checksum_url": "http://dl-cdn.alpinelinux.org/alpine/v3.6/releases/x86_64/alpine-virt-3.6.2-x86_64.iso.sha256",
+    "iso_checksum_type": "sha256",
+    "http_directory": "http",
+    "ssh_username": "packer",
+    "ssh_password": "packer",
+    "boot_wait": "30s",
+    "boot_command": [
+      "root<enter><wait>",
+      "ip link set dev eth0 up && udhcpc -i eth0<enter><wait5>",
+      "wget -O /etc/apk/repositories http://{{ .HTTPIP }}:{{ .HTTPPort }}/repositories<enter><wait>",
+      "apk update && apk add sudo<enter><wait>",
+      "wget -O /etc/sudoers.d/wheel http://{{ .HTTPIP }}:{{ .HTTPPort }}/sudoers<enter><wait>",
+      "adduser packer<enter><wait>",
+      "packer<enter><wait>",
+      "packer<enter><wait>",
+      "addgroup packer wheel<enter><wait>",
+      "setup-sshd -c openssh<enter>"
+    ],
+    "shutdown_command": "sync && sudo poweroff",
+    "vboxmanage": [
+      ["modifyvm", "{{.Name}}", "--cpus", "{{user `cpus`}}"],
+      ["modifyvm", "{{.Name}}", "--memory", "{{user `memory`}}"],
+      ["modifyvm", "{{.Name}}", "--usb", "off"],
+      ["modifyvm", "{{.Name}}", "--audio", "none"]
+    ]
+  }],
+  "provisioners": [{
+    "type": "file",
+    "source": "setup-alpine.conf",
+    "destination": "/tmp/setup-alpine.conf"
+  }, {
+    "type": "file",
+    "source": "chroot.sh",
+    "destination": "/tmp/chroot.sh"
+  }, {
+    "type": "shell",
+    "script": "setup-alpine.sh"
+  }],
+  "post-processors": [
+    [{
+      "type": "vagrant"
+    }, {
+      "type": "vagrant-cloud",
+      "box_tag": "gautaz/alpine-edge",
+      "version": "{{user `version`}}",
+      "no_release": "true"
+    }]
+  ]
+}
